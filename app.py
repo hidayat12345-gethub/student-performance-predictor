@@ -23,7 +23,11 @@ from sklearn.linear_model import LinearRegression
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 
-CSV_PATH = "Student_Performance.csv"
+CSV_CANDIDATES = [
+    "Student_Performance.csv",
+    "Student_Performance (1).csv",
+    "student_performance.csv",
+]
 FEATURES = [
     "Hours Studied",
     "Previous Scores",
@@ -57,10 +61,16 @@ FALLBACK_METRICS = {
 # --------------------------------------------------------------------------
 @st.cache_resource(show_spinner="Training model on Student_Performance.csv...")
 def train_model():
-    if not os.path.exists(CSV_PATH):
+    csv_path = next((p for p in CSV_CANDIDATES if os.path.exists(p)), None)
+    if csv_path is None:
+        # fall back to any .csv file sitting in the app's folder
+        local_csvs = [f for f in os.listdir(".") if f.lower().endswith(".csv")]
+        csv_path = local_csvs[0] if local_csvs else None
+
+    if csv_path is None:
         return None, None
 
-    df = pd.read_csv(CSV_PATH)
+    df = pd.read_csv(csv_path)
     df["Extracurricular Activities"] = df["Extracurricular Activities"].map(
         {"Yes": 1, "No": 0}
     )
@@ -133,6 +143,14 @@ st.markdown(
         border-radius: 8px;
     }
     .stButton>button:hover { background-color: #00e600; color: #0F1626; }
+    .stDownloadButton>button {
+        background-color: #00BFFF;
+        color: #0F1626;
+        font-weight: 700;
+        border: none;
+        border-radius: 8px;
+    }
+    .stDownloadButton>button:hover { background-color: #009fd4; color: #0F1626; }
     </style>
     """,
     unsafe_allow_html=True,
@@ -144,7 +162,7 @@ st.caption("Linear Regression dashboard — Student_Performance.csv")
 trained, metrics = train_model()
 if trained is None:
     st.warning(
-        f"`{CSV_PATH}` not found next to app.py — using a pre-trained fallback "
+        "No CSV file found next to app.py — using a pre-trained fallback "
         "model (fit on the full 10,000-row dataset) instead."
     )
     coef, intercept, metrics = FALLBACK_COEF, FALLBACK_INTERCEPT, FALLBACK_METRICS
